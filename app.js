@@ -32,10 +32,25 @@ let minimumArray = [];
 function minMax(items) {
   const filteredItems = items.filter(j => j && j.PRICE.indexOf('$') !== -1);
     return filteredItems.reduce((acc, val) => {
-        acc.SKU = val.SKU;
-        acc.FIRST_MINIMUM_PRICE = ( acc.FIRST_MINIMUM_PRICE === undefined || val.PRICE < acc.FIRST_MINIMUM_PRICE ) ? val.PRICE : acc.FIRST_MINIMUM_PRICE
-        acc.SECOND_MINIMUM_PRICE = ( acc.SECOND_MINIMUM_PRICE === undefined || val.PRICE > acc.SECOND_MINIMUM_PRICE ) ? val.PRICE : acc.SECOND_MINIMUM_PRICE
-        return acc;
+      acc.SKU = val.SKU;
+      if (acc.FIRST_MINIMUM_PRICE === undefined) {
+        acc.SECOND_MINIMUM_PRICE = val.PRICE;
+        acc.FIRST_MINIMUM_PRICE = val.PRICE;
+      } else if (Number(val.PRICE.replace(/[^0-9]+/g, "")) < Number(acc.FIRST_MINIMUM_PRICE.replace(/[^0-9]+/g, ""))) {  
+        acc.SECOND_MINIMUM_PRICE = acc.FIRST_MINIMUM_PRICE;
+        acc.FIRST_MINIMUM_PRICE = val.PRICE;
+      } else if (
+        Number(val.PRICE.replace(/[^0-9]+/g, "")) > Number(acc.SECOND_MINIMUM_PRICE.replace(/[^0-9]+/g, "")) &&
+        Number(acc.SECOND_MINIMUM_PRICE.replace(/[^0-9]+/g, "")) === Number(acc.FIRST_MINIMUM_PRICE.replace(/[^0-9]+/g, ""))
+      ) {
+        acc.SECOND_MINIMUM_PRICE = val.PRICE;
+      } else if (
+        Number(val.PRICE.replace(/[^0-9]+/g, "")) < Number(acc.SECOND_MINIMUM_PRICE.replace(/[^0-9]+/g, "")) &&
+        Number(val.PRICE.replace(/[^0-9]+/g, "")) > Number(acc.FIRST_MINIMUM_PRICE.replace(/[^0-9]+/g, ""))
+      ) {
+        acc.SECOND_MINIMUM_PRICE = val.PRICE;
+      }
+      return acc;
     }, {});
 }
 
@@ -47,7 +62,6 @@ function readUSAFile() {
     })
     .on('end', () => {
       let minPrice = [];
-      console.log(Object.keys(minimumArray).length);
       let groupBySKU = minimumArray.reduce((acc, value) => {
         if (!acc[value.SKU]) {
           acc[value.SKU] = [];
@@ -60,12 +74,10 @@ function readUSAFile() {
       Object.values(groupBySKU).map(i => {
         minPrice.push(minMax(i));
       })
-      console.log(minPrice);
-      
-      // csvCountryWriter
-      //   .writeRecords(filtereddArray)
-      //   .then(()=> console.log('The CSV file was written successfully'));
-      console.log('CSV file successfully processed');
+     
+      csvMinPriceWriter
+        .writeRecords(minPrice)
+        .then(()=> console.log('The CSV file was written successfully'));
     });
 }
 
@@ -76,7 +88,7 @@ fs.createReadStream('input/main.csv')
   })
   .on('end', () => {
     const filtereddArray = array.filter(item => item.COUNTRY.indexOf('USA') !==-1)
-    
+   
     csvCountryWriter
       .writeRecords(filtereddArray)
       .then(()=> {
